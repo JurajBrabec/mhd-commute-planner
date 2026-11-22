@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.cache/
+.schedule-history/
+config/routes.yaml
+viz/mockups.html
+viz/data.json

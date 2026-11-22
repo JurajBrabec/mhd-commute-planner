@@ -1,0 +1,28 @@
+{
+  "name": "mhd",
+  "version": "1.0.0",
+  "description": "",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/build-viz.js --serve",
+    "dev": "tsx src/build-viz.ts --serve",
+    "plan": "tsx src/cli.ts",
+    "viz": "tsx src/build-viz.ts",
+    "check:live": "tsx src/check-live.ts",
+    "test": "tsx --test src/__tests__/*.test.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "type": "module",
+  "dependencies": {
+    "cheerio": "^1.2.0",
+    "yaml": "^2.9.1"
+  },
+  "devDependencies": {
+    "@types/jsdom": "^30.0.0",
+    "@types/node": "^26.6.6",
+    "jsdom": "^31.0.1",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  }
+}

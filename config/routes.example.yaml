@@ -1,0 +1,35 @@
+# Copy to config/routes.yaml and replace the example stops and URLs with
+# per-stop timetable pages for your own commute. URLs below are placeholders.
+# Add a separate line entry for the reverse direction; transit edges are directed.
+timezone: Europe/Bratislava
+stops:
+  - Example stop A
+  - Example stop B
+lines:
+  - line: "1"
+    direction: Example direction
+    stops:
+      Example stop A: "https://imhd.sk/REPLACE-WITH-STOP-A-TIMETABLE-URL"
+      Example stop B: "https://imhd.sk/REPLACE-WITH-STOP-B-TIMETABLE-URL"
+walkTransfers: []
+directions:
+  toWork:
+    departureWindow: "07:00-08:00"
+    origin:
+      name: Home
+      connectsTo:
+        - { stop: Example stop A, walkMinutes: 5 }
+    destination:
+      name: Work
+      connectsTo:
+        - { stop: Example stop B, walkMinutes: 5 }
+  toHome:
+    departureWindow: "16:00-17:00"
+    origin:
+      name: Work
+      connectsTo:
+        - { stop: Example stop B, walkMinutes: 5 }
+    destination:
+      name: Home
+      connectsTo:
+        - { stop: Example stop A, walkMinutes: 5 }

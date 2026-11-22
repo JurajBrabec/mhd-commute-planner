@@ -1,0 +1,8 @@
+node_modules
+.cache
+.schedule-history
+dist
+.git
+config/routes.yaml
+viz
+*.log
