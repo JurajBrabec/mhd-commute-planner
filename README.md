@@ -21,6 +21,47 @@ Open <http://127.0.0.1:3000>. The image binds to `0.0.0.0` inside the container;
 
 **Trusted private use only:** the app has no authentication. Do not expose it to the public internet without access controls and a security review. Anyone who can access it can view the configured commute and refresh its cache.
 
+## CI and deployment
+
+Gitea is the source of truth. GitHub hosts a public push mirror at
+<https://github.com/JurajBrabec/mhd-commute-planner> and runs GitHub Actions.
+Make changes in Gitea, not directly in the mirror.
+
+The workflow runs offline tests, compiles TypeScript, and builds a Linux amd64
+container on pull requests and pushes to `main`. Only successful `main` builds
+publish to GHCR, using the job-scoped `GITHUB_TOKEN` (no registry password secret).
+Actions are pinned to commit SHAs; Dependabot proposes weekly action updates.
+Dependabot PRs on the mirror must be applied in Gitea rather than merged there.
+
+Published images:
+
+- `ghcr.io/jurajbrabec/mhd-commute-planner:latest` — latest successful `main` build.
+- `ghcr.io/jurajbrabec/mhd-commute-planner:sha-<full-commit-sha>` — revision tag for rollback.
+  Use an image digest when strict immutability is required.
+
+### One-time setup
+
+1. In the Gitea repository's **Settings → Repository → Push Mirrors**, add
+   `https://github.com/JurajBrabec/mhd-commute-planner.git`. Authenticate as
+   `JurajBrabec` with a fine-grained GitHub PAT scoped only to this repository,
+   with **Contents: read/write** and **Workflows: read/write**. Set an expiry,
+   enable sync on push if available, and run **Synchronize now**. Store the PAT
+   only in Gitea's mirror credentials, never in Git or a remote URL.
+2. Confirm GitHub Actions is enabled and inspect the first **CI** run. After the
+   first image publish, change the GHCR package visibility to **Public** if
+   anonymous pulls are desired; public repository visibility does not make its
+   container package public automatically.
+3. In the separate Compose repository used by Dockhand, replace the app's local
+   build with `image: ghcr.io/jurajbrabec/mhd-commute-planner:latest` and
+   `pull_policy: always`. Keep the existing private config mount, writable data
+   volumes, and restricted network exposure. Dockhand's scheduled updates must
+   pull the tag and recreate the service when its digest changes.
+
+For rollback, set the Compose image to a previous successful `sha-...` tag or
+image digest and let Dockhand redeploy. No deployment credential or access to
+Dockhand is granted to GitHub Actions. CI must not receive the private route
+configuration and does not run the live timetable check.
+
 ## Run locally
 
 Use Node.js 24 and npm:
