@@ -39,7 +39,32 @@ Published images:
 - `ghcr.io/jurajbrabec/mhd-commute-planner:sha-<full-commit-sha>` — revision tag for rollback.
   Use an image digest when strict immutability is required.
 
-### One-time setup
+### Setup completed
+
+- Created the public GitHub repository under the **JurajBrabec user account**
+  (not an organization), seeded `main`, and added the local `github` remote.
+  `origin` remains the self-hosted Gitea repository.
+- Configured and successfully synchronized a Gitea push mirror using a stored
+  GitHub token. Future commits go to Gitea and are mirrored to GitHub.
+- Added `.github/workflows/ci.yml` and `.github/dependabot.yml`, committed them
+  through Gitea, and confirmed the GitHub Actions runs succeeded.
+- Confirmed the image was published and the GHCR package is public. GHCR is the
+  chosen registry; Docker Hub is not used.
+- Deferred deployment: the service is not yet configured in the separate Compose
+  repository or Dockhand. The pipeline currently ends at image publication.
+
+### Maintenance decisions
+
+Dependabot PRs and their check runs are expected. PR checks do not publish images.
+Review proposed updates, apply them in Gitea, and let the mirror carry them to
+GitHub; do not merge changes directly into the GitHub mirror.
+
+Branch protection was deferred. Configure protection in Gitea first (prevent
+force pushes and deletion; optionally require PRs). Any GitHub protection must
+allow the mirror account to push, or synchronization can fail. GitHub's suggestion
+to protect `main` is advisory, not a CI failure.
+
+### Setup reference
 
 1. In the Gitea repository's **Settings → Repository → Push Mirrors**, add
    `https://github.com/JurajBrabec/mhd-commute-planner.git`. Authenticate as
@@ -51,11 +76,15 @@ Published images:
    first image publish, change the GHCR package visibility to **Public** if
    anonymous pulls are desired; public repository visibility does not make its
    container package public automatically.
-3. In the separate Compose repository used by Dockhand, replace the app's local
-   build with `image: ghcr.io/jurajbrabec/mhd-commute-planner:latest` and
-   `pull_policy: always`. Keep the existing private config mount, writable data
-   volumes, and restricted network exposure. Dockhand's scheduled updates must
-   pull the tag and recreate the service when its digest changes.
+
+### Deployment (deferred)
+
+When creating the service in the separate Compose repository used by Dockhand,
+use `image: ghcr.io/jurajbrabec/mhd-commute-planner:latest` and
+`pull_policy: always`. Configure the private route-file mount, writable data
+volumes, and restricted network exposure as described above. No registry login
+is required to pull the public image. If enabling Dockhand's scheduled updates,
+ensure they pull the tag and recreate the service when its digest changes.
 
 For rollback, set the Compose image to a previous successful `sha-...` tag or
 image digest and let Dockhand redeploy. No deployment credential or access to
