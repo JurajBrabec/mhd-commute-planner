@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { mkdir, readFile, writeFile, rm } from "node:fs/promises";
+import { mkdir, readFile, writeFile, rm, readdir } from "node:fs/promises";
 import path from "node:path";
 
 const CACHE_DIR = path.resolve(process.cwd(), ".cache");
@@ -20,9 +20,17 @@ function todayDateStr(timezone: string): string {
   return new Date().toLocaleDateString("en-CA", { timeZone: timezone }); // YYYY-MM-DD
 }
 
-// Remove all cached timetable pages; the next fetch recreates the directory.
+// Preserve the directory: Docker's runtime user can write its contents but
+// cannot remove it from the root-owned /app (and it may be a volume mount).
 export async function clearTimetableCache(): Promise<void> {
-  await rm(CACHE_DIR, { recursive: true, force: true });
+  let entries: string[];
+  try {
+    entries = await readdir(CACHE_DIR);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return;
+    throw error;
+  }
+  await Promise.all(entries.map(entry => rm(path.join(CACHE_DIR, entry), { recursive: true, force: true })));
 }
 
 export async function fetchCached(url: string, timezone: string): Promise<string> {
