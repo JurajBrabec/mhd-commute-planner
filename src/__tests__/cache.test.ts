@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtemp, rm, readdir } from "node:fs/promises";
+import { mkdtemp, rm, readdir, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -11,6 +11,10 @@ const originalCwd = process.cwd();
 process.chdir(scratchDir);
 const { fetchCached, clearTimetableCache } = await import("../cache.js");
 
+test("clearTimetableCache: missing directory is harmless", async () => {
+  await clearTimetableCache();
+});
+
 test("clearTimetableCache: next request fetches fresh content", async () => {
   const originalFetch = globalThis.fetch;
   let calls = 0;
@@ -19,7 +23,11 @@ test("clearTimetableCache: next request fetches fresh content", async () => {
     const url = "https://example.test/refresh";
     assert.equal(await fetchCached(url, "Europe/Bratislava"), "version 1");
     assert.equal(await fetchCached(url, "Europe/Bratislava"), "version 1");
+    const cacheDir = path.join(scratchDir, ".cache");
+    const before = await stat(cacheDir);
     await clearTimetableCache();
+    assert.deepEqual(await readdir(cacheDir), [], "cache contents must be removed");
+    assert.equal((await stat(cacheDir)).ino, before.ino, "cache directory must be preserved");
     assert.equal(await fetchCached(url, "Europe/Bratislava"), "version 2");
   } finally {
     await clearTimetableCache();
