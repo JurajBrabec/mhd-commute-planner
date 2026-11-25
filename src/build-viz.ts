@@ -149,7 +149,7 @@ export function renderPage(data?: JsonOutput, pattern: SchedulePattern = "workda
 <body>
 <h1>MHD Commute Planner</h1>
 <p class="note">Planned for <strong>${patternLabel}</strong> schedule pattern.</p>
-${data ? "" : '<nav><a href="/?pattern=workday">Workday</a> · <a href="/?pattern=freeday">Free day</a> · <button type="button" id="refresh-cache">Refresh schedule</button> <span id="refresh-status" role="status"></span></nav>'}
+${data ? "" : '<nav><a href="/?pattern=workday">Workday</a> · <a href="/?pattern=freeday">Free day</a> · <button type="button" id="refresh-cache" disabled>Refresh schedule</button> <progress id="schedule-progress" aria-label="Loading schedule"></progress> <span id="refresh-status" role="status" aria-live="polite">Loading schedules and computing routes…</span></nav>'}
 <p class="note" id="schedule-age" aria-label="Schedule generation time"></p>
 <p class="note" id="schedule-changes" role="status"></p>
 <div id="app"></div>
@@ -259,21 +259,45 @@ const CSS = `
 `;
 
 const JS = `
-(async function () {
 const refreshButton = document.getElementById('refresh-cache');
+const scheduleProgress = document.getElementById('schedule-progress');
+const scheduleStatus = document.getElementById('refresh-status');
+let loadingTimer;
+function startLoading(message) {
+  if (!refreshButton) return;
+  refreshButton.disabled = true;
+  scheduleProgress.hidden = false;
+  document.getElementById('app').setAttribute('aria-busy', 'true');
+  const started = Date.now();
+  const update = () => {
+    const seconds = Math.floor((Date.now() - started) / 1000);
+    scheduleStatus.textContent = message + ' · ' + seconds + 's elapsed' +
+      (seconds >= 10 ? '. Still working; first load can take longer on slower hosts.' : '.');
+  };
+  clearInterval(loadingTimer);
+  update();
+  loadingTimer = setInterval(update, 1000);
+}
+function finishLoading() {
+  clearInterval(loadingTimer);
+  if (!refreshButton) return;
+  refreshButton.disabled = false;
+  scheduleProgress.hidden = true;
+  document.getElementById('app').setAttribute('aria-busy', 'false');
+}
+(async function () {
+startLoading('Loading schedules and computing routes…');
 if (refreshButton) refreshButton.addEventListener('click', async () => {
   const status = document.getElementById('refresh-status');
-  refreshButton.disabled = true;
-  status.textContent = 'Refreshing schedule…';
+  startLoading('Refreshing schedules…');
   try {
     const response = await fetch('/api/refresh', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
     if (!response.ok) throw new Error('HTTP ' + response.status);
     location.reload();
   } catch (err) {
     status.textContent = 'Refresh failed. Please try again.';
-    refreshButton.disabled = false;
     console.error(err);
-  }
+  } finally { finishLoading(); }
 });
 const embedded = JSON.parse(document.getElementById('data').textContent);
 const response = embedded ? null : await fetch('/api/data' + location.search);
@@ -1482,7 +1506,12 @@ const DIRECTION_META = {
 });
 
 app.insertBefore(tabBar, app.firstChild);
-})().catch(err => { document.getElementById('app').textContent = 'Failed to load timetable. Please retry.'; console.error(err); });
+if (scheduleStatus) scheduleStatus.textContent = 'Schedule ready.';
+})().catch(err => {
+  document.getElementById('app').textContent = 'Failed to load timetable. Please retry.';
+  if (scheduleStatus) scheduleStatus.textContent = 'Loading failed. Use Refresh schedule to try again.';
+  console.error(err);
+}).finally(finishLoading);
 `;
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
